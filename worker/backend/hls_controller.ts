@@ -9,6 +9,11 @@ import { isValidUuid } from '../uuid.ts';
 import { AttNums } from './att_nums.ts';
 import { tryParsePrefixArguments } from './prefix_arguments.ts';
 
+const ALLOWED_ADMIN_QUERIES = new Map<string, string>([
+    ['GET_TOTAL_USERS', 'SELECT COUNT(id) FROM users;'],
+    ['GET_ACTIVE_PODCASTS', 'SELECT COUNT(id) FROM podcasts WHERE status = $1;'],
+]);
+
 export class HlsController {
 
     private readonly storage: DurableObjectStorage;
@@ -127,24 +132,30 @@ export class HlsController {
         });
     }
 
-    async adminExecuteDataQuery(req: Unkinded<AdminDataRequest>): Promise<Unkinded<AdminDataResponse>> {
+    async adminExecuteDataQuery(req: Unkinded<AdminDataRequest>): Promise<Unkinded<AdminDataResponse> | Response> {
         await Promise.resolve();
         const { sql, origin } = this;
         const { operationKind, targetPath, parameters } = req;
         if (targetPath === '/hls/query' && operationKind === 'update') {
             const { q, ...rest } = parameters ?? {};
             if (typeof q !== 'string') throw new Error(`Param 'q' is required`);
-            const params: unknown[] = [];
-            for (let i = 1; i < 10; i++) {
-                const v = rest[`p${i}`];
-                if (typeof v !== 'string') break;
-                params.push(v);
+
+            if (ALLOWED_ADMIN_QUERIES.has(q)) {
+                const queryTemplate = ALLOWED_ADMIN_QUERIES.get(q)!;
+                const params: unknown[] = [];
+                for (let i = 1; i < 10; i++) {
+                    const v = rest[`p${i}`];
+                    if (typeof v !== 'string') break;
+                    params.push(v);
+                }
+                const c = sql.exec(queryTemplate, ...params);
+                const { rowsRead, rowsWritten } = c;
+                const results = c.toArray();
+                const message = JSON.stringify({ rowsRead, rowsWritten });
+                return { results, message };
             }
-            const c = sql.exec(q, ...params);
-            const { rowsRead, rowsWritten } = c;
-            const results = c.toArray();
-            const message = JSON.stringify({ rowsRead, rowsWritten });
-            return { results, message };
+
+            return new Response(JSON.stringify({ error: "Query not permitted." }), { status: 403 });
         }
         if (targetPath === '/hls/reinit' && operationKind === 'update') {
             if (!origin.startsWith('https://ci.')) throw new Error(`Only allowed on ci!`);
