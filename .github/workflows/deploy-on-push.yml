@@ -28,6 +28,6 @@ jobs:
           CF_BACKEND_DO_NAMESPACE: ${{ secrets.CF_BACKEND_DO_NAMESPACE }}
           CF_BACKEND_SQL_DO_NAMESPACE: ${{ secrets.CF_BACKEND_SQL_DO_NAMESPACE }}
           INSTANCE: prod
-          ADMIN_TOKENS: ${{ secrets.ADMIN_TOKENS }}
-          PREVIEW_TOKENS: ${{ secrets.PREVIEW_TOKENS }}
+          ADMIN_TOKENS: ${{ secrets.ADMIN_TOKENS || 'optional' }}
+          PREVIEW_TOKENS: ${{ secrets.PREVIEW_TOKENS || 'optional' }}
 
