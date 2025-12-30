@@ -9,15 +9,9 @@ env:
   DEPLOY_REPOSITORY_URL: ${{ github.repositoryUrl }}
   CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
   CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-  PODCAST_INDEX_CREDENTIALS: ${{ secrets.PODCAST_INDEX_CREDENTIALS }}
-  DEBUG_WEBHOOK_URL: ${{ secrets.DEBUG_WEBHOOK_URL }}
-  BASELIME_EVENTS_URL: ${{ secrets.BASELIME_EVENTS_URL }}
-  BASELIME_API_KEY: ${{ secrets.BASELIME_API_KEY }}
-  LIMITER_1: ${{ secrets.LIMITER_1 }}
-  PRODUCTION_DOMAIN: op3.dev
 
 jobs:
-  deploy-ci:
+  deploy-prod:
     runs-on: ubuntu-22.04
     env:
       DEPLOY_SHA: ${{ github.sha }}
@@ -26,78 +20,14 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ env.DEPLOY_SHA }}
-      - name: Deploy to ci
-        run: ./deploy.sh
-        env:
-          CF_CUSTOM_DOMAIN: ci.op3.dev
-          CF_SCRIPT_NAME: op3-ci
-          CF_BACKEND_DO_NAMESPACE: backend-do-ci
-          CF_BACKEND_SQL_DO_NAMESPACE: backend-sql-do-ci
-          CF_AE_DATASET: dataset1-ci
-          CF_ANALYTICS_TOKEN: 031c86bb64214cb5a6b7aab02b5e1925
-          TURNSTILE_SITEKEY: 0x4AAAAAAAAv-9Je89jD5c9h
-          TURNSTILE_SECRET_KEY: ${{ secrets.CI_TURNSTILE_SECRET_KEY }}
-          INSTANCE: ci
-          ADMIN_TOKENS: ${{ secrets.CI_ADMIN_TOKENS }}
-          PREVIEW_TOKENS: ${{ secrets.CI_PREVIEW_TOKENS }}
-          BLOBS_BUCKET: blobs-ci
-          KV_NAMESPACE: a5f6ff554a6d4719aba41cbac9c7cfb5 # kv-ci
-          QUEUE1_NAME: queue1-ci
-          QUEUE2_NAME: queue2-ci
-          XFETCHER: ${{ secrets.XFETCHER }}
-  deploy-staging:
-    runs-on: ubuntu-22.04
-    env:
-      DEPLOY_SHA: 503b2a6dbb661d2b7134be062adb7228206e1275
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ env.DEPLOY_SHA }}
-      - name: Deploy to staging
-        run: ./deploy.sh
-        env:
-          CF_CUSTOM_DOMAIN: staging.op3.dev
-          CF_SCRIPT_NAME: op3-staging
-          CF_BACKEND_DO_NAMESPACE: backend-do-staging
-          CF_BACKEND_SQL_DO_NAMESPACE: backend-sql-do-staging
-          CF_AE_DATASET: dataset1-staging
-          CF_ANALYTICS_TOKEN: 3c527d531d83451b8c89fba58678822a
-          TURNSTILE_SITEKEY: 0x4AAAAAAAA2w5UVs5xYhwmA
-          TURNSTILE_SECRET_KEY: ${{ secrets.STAGING_TURNSTILE_SECRET_KEY }}
-          INSTANCE: staging
-          ADMIN_TOKENS: ${{ secrets.STAGING_ADMIN_TOKENS }}
-          PREVIEW_TOKENS: ${{ secrets.STAGING_PREVIEW_TOKENS }}
-          BLOBS_BUCKET: blobs-staging
-          KV_NAMESPACE: 50f5df200d254590afb02b9a8166d204 # kv-staging
-          QUEUE1_NAME: queue1-staging
-          QUEUE2_NAME: queue2-staging
-          XFETCHER: ${{ secrets.XFETCHER }}
-  deploy-prod:
-    runs-on: ubuntu-22.04
-    env:
-      DEPLOY_SHA: 503b2a6dbb661d2b7134be062adb7228206e1275
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ env.DEPLOY_SHA }}
       - name: Deploy to prod
         run: ./deploy.sh
         env:
-          CF_CUSTOM_DOMAIN: ${{ env.PRODUCTION_DOMAIN }}
-          CF_SCRIPT_NAME: op3-prod
-          CF_BACKEND_DO_NAMESPACE: backend-do-prod
-          CF_BACKEND_SQL_DO_NAMESPACE: backend-sql-do-prod
-          CF_AE_DATASET: dataset1-prod
-          CF_ANALYTICS_TOKEN: 7da609030515408f9ec8b16c529cecaf
-          TURNSTILE_SITEKEY: 0x4AAAAAAAA2spHLeOT__ylU
-          TURNSTILE_SECRET_KEY: ${{ secrets.PROD_TURNSTILE_SECRET_KEY }}
+          CF_CUSTOM_DOMAIN: analytics.donecast.com
+          CF_SCRIPT_NAME: op3-donecast
+          CF_BACKEND_DO_NAMESPACE: ${{ secrets.CF_BACKEND_DO_NAMESPACE }}
+          CF_BACKEND_SQL_DO_NAMESPACE: ${{ secrets.CF_BACKEND_SQL_DO_NAMESPACE }}
           INSTANCE: prod
-          ADMIN_TOKENS: ${{ secrets.PROD_ADMIN_TOKENS }}
-          PREVIEW_TOKENS: ${{ secrets.PROD_PREVIEW_TOKENS }}
-          BLOBS_BUCKET: blobs-prod
-          KV_NAMESPACE: 39ea09ad9de24e8d9b4d4f88df061408 # kv-prod
-          QUEUE1_NAME: queue1-prod
-          QUEUE2_NAME: queue2-prod
-          XFETCHER: ${{ secrets.XFETCHER }}
+          ADMIN_TOKENS: ${{ secrets.ADMIN_TOKENS }}
+          PREVIEW_TOKENS: ${{ secrets.PREVIEW_TOKENS }}
+
