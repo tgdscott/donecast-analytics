@@ -49,7 +49,7 @@ import { hmac } from './crypto.ts';
 import { computeTimestamp } from './timestamp.ts';
 
 export default {
-    
+
     async fetch(request: Request, env: WorkerEnv, context: ModuleWorkerContext): Promise<Response> {
         try {
             const requestTime = Date.now();
@@ -60,7 +60,7 @@ export default {
 
             const cache = (globalThis.caches as unknown as CfGlobalCaches).default;
             if (!banlist) banlist = new Banlist(env.kvNamespace, cache);
-        
+
             // first, handle redirects - the most important function
             // be careful here: must never throw
             const redirectResponse = await tryComputeRedirectResponse(request, { env, context, requestTime, cache });
@@ -74,7 +74,7 @@ export default {
                 consoleError('worker-compute-response', `Unhandled error computing response: ${(e as Error).stack || e}`);
                 response = new Response('failed', { status: 500 });
             }
-            
+
             // request/response metrics
             writeTraceEvent(() => {
                 const millis = Date.now() - requestTime;
@@ -142,7 +142,7 @@ export default {
                 }
             } else if (batch.queue === queue2Name) {
                 // raw redirects batch
-                
+
                 const batchUuid = generateUuid();
                 const rawRedirectsByMessageId: Record<string, { rawRedirects: RawRedirect[], timestamp: string }> = {};
                 for (const msg of batch.messages) {
@@ -166,11 +166,12 @@ export default {
                 }
                 const consumerStartTime = new Date(consumerStart).toISOString();
                 const consumerTime = Date.now() - consumerStart;
-                const doubles: number[] = [ messageCount, redirectCount, putCount, evictedCount, ackCount, retryCount, newUrlCount ];
-                const times: number[] = [ consumerTime, packRawRedirects, saveAttNums, ensureMinuteFileLoaded, saveMinuteFile, saveIndexRecords, sendNotification ];
-                writeTraceEvent({ kind: 'hits-batch',
-                    strings: [ '', batchUuid, colo, doColo, rpcSentTime, rpcReceivedTime, minTimestamp ?? '', medTimestamp ?? '', maxTimestamp ?? '', consumerStartTime ],
-                    doubles: [ ...doubles, ...Array(20 - doubles.length - times.length).fill(0), ...times.reverse() ],
+                const doubles: number[] = [messageCount, redirectCount, putCount, evictedCount, ackCount, retryCount, newUrlCount];
+                const times: number[] = [consumerTime, packRawRedirects, saveAttNums, ensureMinuteFileLoaded, saveMinuteFile, saveIndexRecords, sendNotification];
+                writeTraceEvent({
+                    kind: 'hits-batch',
+                    strings: ['', batchUuid, colo, doColo, rpcSentTime, rpcReceivedTime, minTimestamp ?? '', medTimestamp ?? '', maxTimestamp ?? '', consumerStartTime],
+                    doubles: [...doubles, ...Array(20 - doubles.length - times.length).fill(0), ...times.reverse()],
                 });
             }
         } catch (e) {
@@ -178,7 +179,7 @@ export default {
             throw e; // Queues will retry for us
         }
     },
-    
+
 }
 
 //
@@ -220,7 +221,7 @@ async function tryComputeRedirectResponse(request: Request, opts: { env: WorkerE
         try {
             IsolateId.log();
             if (!backendNamespace) throw new Error(`backendNamespace not defined!`);
-            
+
             rawIpAddress = computeRawIpAddress(request.headers) ?? '<missing>';
             if (redirectRequest.kind === 'valid' && !banned) {
                 const { prefixArgs = {}, targetUrl } = redirectRequest;
@@ -234,7 +235,7 @@ async function tryComputeRedirectResponse(request: Request, opts: { env: WorkerE
                 rawRedirects.push(rawRedirect);
                 validRawRedirect = rawRedirect;
             }
-            
+
             if (rawRedirects.length > 0) {
                 const rpcClient = new CloudflareRpcClient(backendNamespace, backendSqlNamespace, 5);
                 const doName = DoNames.redirectLogForColo(colo);
@@ -323,7 +324,7 @@ async function tryComputeHlsResult(hlsUrl: string, { method, origin, blobsBucket
                     const absUrl = new URL(trimmed, u);
                     const absUrlStr = absUrl.toString();
                     if (!absUrlStr.startsWith('https://')) throw new Error(`Unexpected URI line: ${trimmed}`);
-                    const sig = (await hmac(Bytes.ofUtf8([ 's', sid, 'p', pid, 't', timestamp, 'hn', absUrl.hostname, 'pn', absUrl.pathname ].join(',')), hmacKey)).hex();
+                    const sig = (await hmac(Bytes.ofUtf8(['s', sid, 'p', pid, 't', timestamp, 'hn', absUrl.hostname, 'pn', absUrl.pathname].join(',')), hmacKey)).hex();
                     const transformedLine = `${origin}/e,hls=1,s=${sid},p=${pid},t=${timestamp},g=${sig}/${absUrlStr.substring('https://'.length)}`;
                     newLines.push(transformedLine);
                 } else {
@@ -364,27 +365,27 @@ async function addHlsOther({ other, hlsResult, prefixArgs, secret, targetUrl }: 
     const sid = hlsResult?.sid ?? prefixArgs.s;
     if (sid) other.sid = sid;
     if (hlsResult?.pid) other.pid = hlsResult.pid;
-    if (hlsResult?.pendingWork) try { other.hlsHash = (await hlsResult.pendingWork()).hash; } catch { /* noop */ } 
+    if (hlsResult?.pendingWork) try { other.hlsHash = (await hlsResult.pendingWork()).hash; } catch { /* noop */ }
     if (typeof prefixArgs.p === 'string') other.ppid = prefixArgs.p;
     if (typeof prefixArgs.s === 'string') {
         other.subrequest = 'hls';
         const { s, p, t, g } = prefixArgs;
-        if ([ s, p, t, g ].every(v => typeof v === 'string')) {
+        if ([s, p, t, g].every(v => typeof v === 'string')) {
             const hmacKey = hmacKeys.get(secret) ?? await importHmacKey(Bytes.ofUtf8(secret)); hmacKeys.set(secret, hmacKey);
             const u = tryParseUrl(targetUrl);
             if (u) {
-                const sig = (await hmac(Bytes.ofUtf8([ 's', s, 'p', p, 't', t, 'hn', u.hostname, 'pn', u.pathname ].join(',')), hmacKey)).hex();
+                const sig = (await hmac(Bytes.ofUtf8(['s', s, 'p', p, 't', t, 'hn', u.hostname, 'pn', u.pathname].join(',')), hmacKey)).hex();
                 if (sig === g) {
                     other.verifiedTimestamp = t;
                 }
             }
         }
     }
-    
+
 }
 
 function parseStringSet(commaDelimitedString: string | undefined): Set<string> {
-    return new Set((commaDelimitedString  ?? '').split(',').map(v => v.trim()).filter(v => v !== ''));
+    return new Set((commaDelimitedString ?? '').split(',').map(v => v.trim()).filter(v => v !== ''));
 }
 
 async function computeResponse(request: Request, colo: string | undefined, env: WorkerEnv, context: ModuleWorkerContext): Promise<Response> {
@@ -399,6 +400,35 @@ async function computeResponse(request: Request, colo: string | undefined, env: 
     const productionOrigin = productionDomain ? `https://${productionDomain}` : origin;
 
     if (protocol === 'http:' && env.origin?.startsWith('https:')) return computeHttpToHttpsRedirectResponse(request.url); // redirect http -> https for all non-episode-redirect requests
+
+    // Proxy RSS feed requests to the backend API
+    // This allows rss.donecast.com/rss/{slug}/feed.xml to serve feeds
+    // while also handling /e/ tracking redirects on the same domain
+    if ((method === 'GET' || method === 'HEAD') && pathname.startsWith('/rss/')) {
+        const backendUrl = `https://api.donecast.com${pathname}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+        try {
+            const backendResponse = await fetch(backendUrl, {
+                method,
+                headers: {
+                    'Accept': headers.get('accept') ?? 'application/rss+xml',
+                    'Accept-Encoding': headers.get('accept-encoding') ?? 'gzip',
+                    'User-Agent': headers.get('user-agent') ?? 'OP3-RSS-Proxy/1.0',
+                },
+            });
+            // Clone and return the response with CORS headers
+            const responseHeaders = new Headers(backendResponse.headers);
+            responseHeaders.set('access-control-allow-origin', '*');
+            return new Response(backendResponse.body, {
+                status: backendResponse.status,
+                statusText: backendResponse.statusText,
+                headers: responseHeaders,
+            });
+        } catch (e) {
+            consoleError('rss-proxy', `Error proxying RSS feed: ${(e as Error).stack || e}`);
+            return new Response('Failed to fetch RSS feed', { status: 502 });
+        }
+    }
+
     if (method === 'GET' && pathname === '/') return computeHomeResponse({ instance, origin, productionOrigin, cfAnalyticsToken, deploySha, deployTime, searchParams, acceptLanguage });
     if (method === 'GET' && pathname === '/favicon.svg') return computeFaviconSvgResponse();
     if (method === 'GET' && pathname === '/terms') return computeTermsResponse({ instance, hostname, origin, productionOrigin, productionDomain, cfAnalyticsToken });
